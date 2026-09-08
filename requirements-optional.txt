@@ -15,5 +15,11 @@ tiktoken>=0.7.0
 sentence-transformers>=3.0.0
 numpy>=1.26.0
 
+# --- Provider remoto de LLM para o SDK (sdc/models/provider.py:LiteLLMProvider),
+# usado por sdc.sdk.Agent.ask() se voce trocar o EchoProvider. 100+ backends
+# (OpenAI, Anthropic, Ollama/vLLM local). Import tardio; sem o pacote, so o
+# EchoProvider funciona.
+litellm>=1.50
+
 # --- Testes
 pytest>=8.0.0

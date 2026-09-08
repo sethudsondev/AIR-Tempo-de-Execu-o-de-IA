@@ -35,22 +35,7 @@ class Candidate:
     created_at: float
 
 
-_SEMANTIC = None
-_SEMANTIC_TRIED = False
-
-
-def _semantic_model():
-    global _SEMANTIC, _SEMANTIC_TRIED
-    if _SEMANTIC_TRIED:
-        return _SEMANTIC
-    _SEMANTIC_TRIED = True
-    try:
-        from sentence_transformers import SentenceTransformer
-
-        _SEMANTIC = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-    except Exception:
-        _SEMANTIC = None
-    return _SEMANTIC
+from sdc.adapters import semantic_search
 
 
 class Retriever:
@@ -82,20 +67,13 @@ class Retriever:
         results = self.memory.search(query, limit=limit, project=project)
 
         if self.enable_semantic and query.strip():
-            model = _semantic_model()
-            if model is not None:
-                actives = self.memory.all_active(project)
-                if actives:
-                    import numpy as np
-
-                    q = model.encode([query], normalize_embeddings=True)
-                    docs = model.encode(
-                        [f"{m.key} {m.content}" for m in actives], normalize_embeddings=True
-                    )
-                    sims = (docs @ q.T).ravel()
-                    order = np.argsort(-sims)[:limit]
-                    results = [(actives[i], float(sims[i])) for i in order if sims[i] > 0.15]
-                    method = "semantic:all-MiniLM-L6-v2"
+            actives = self.memory.all_active(project)
+            ranked = semantic_search.rank(
+                query, [f"{m.key} {m.content}" for m in actives], limit=limit
+            )
+            if ranked:
+                results = [(actives[i], score) for i, score in ranked]
+                method = "semantic:all-MiniLM-L6-v2"
 
         cands = []
         for mem, base in results:

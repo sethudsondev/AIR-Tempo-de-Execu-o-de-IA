@@ -43,6 +43,15 @@ adapter** em processo, sem MCP, para backends que embutem o SDC direto.
 | `tokens.py` | contagem honesta (tiktoken ou heurística, sempre com `method`) | — |
 | `mcp/adapter.py` | validar → chamar núcleo → `{ok, ...}` / `{ok:false, error, code}` | conhecer MCP |
 | `mcp/server.py` | registrar tools/resources/prompt, `run(stdio)` | lógica de domínio |
+| `security/permissions.py` | capability grants, allowlist/deny-by-default | validar formato (é o `guard.py`) |
+| `events/bus.py` | pub/sub **efêmero** em processo (coordenação) | persistir (é o `events/log.py`) |
+| `verification/engine.py` | sucesso **semântico** de uma ação (OK/FAILED/**UNKNOWN**) | executar a ação |
+| `planner/planner.py` | executar grafo de tasks com dependência + verificação por passo | resolver planejamento automático |
+| `tools/registry.py` | tool call → checa capacidade → roteia output grande p/ Context Engine | protocolo de tool (é MCP) |
+| `models/provider.py` | abstração de LLM (`EchoProvider`, `LiteLLMProvider` opcional) | ser chamado pelo núcleo (só o SDK usa) |
+| `filesystem/fs.py`, `process/proc.py` | operações de arquivo/comando (casca fina) — confinamento + allowlist | isolamento real (seria um adapter de sandbox) |
+| `adapters/semantic_search.py` | embeddings via `sentence-transformers` (opt-in) | ligar por padrão |
+| `sdk/agent.py` | fachada `Agent` que fia tudo | — |
 
 ## Decisões-chave
 
@@ -108,3 +117,26 @@ contaminação cross-projeto num storage compartilhado.
 Não foi copiado código do AIR — o `mcp_server/` do AIR é Python com a
 mesma família de SDK, mas as classes de domínio, o schema e o Context
 Engine aqui foram escritos para o schema deste briefing.
+
+## Paridade de módulos com o AIR
+
+O `sdc/` cobre a mesma superfície do AIR:
+
+| AIR | SecureData Central |
+|---|---|
+| `world/state.py` | `sdc/world/state.py` (temporal em vez de grafo) |
+| `memory/store.py` | `sdc/memory/store.py` |
+| `context/engine.py` | `sdc/context/engine.py` + `sdc/context/retrieval.py` |
+| `events/bus.py` | `sdc/events/bus.py` |
+| (`world.event`) | `sdc/events/log.py` (log durável separado) |
+| `security/permissions.py` | `sdc/security/permissions.py` (+ `guard.py` p/ input) |
+| `verification/engine.py` | `sdc/verification/engine.py` |
+| `planner/planner.py` | `sdc/planner/planner.py` |
+| `tools/registry.py` | `sdc/tools/registry.py` |
+| `models/provider.py` | `sdc/models/provider.py` |
+| `filesystem/fs.py`, `process/proc.py` | idem (com allowlist mais estrita) |
+| `adapters/semantic_search.py` | `sdc/adapters/semantic_search.py` |
+| `mcp_server/{server,adapter,config,tokens}.py` | `sdc/mcp/{server,adapter}.py`, `sdc/config.py`, `sdc/tokens.py` |
+| `sdk/agent.py` | `sdc/sdk/agent.py` (+ `sdc/agent.py` = `MemoryAgent` enxuto) |
+| `kakeya_index.py` (índice de bisseção) | **não portado** — busca linear é suficiente no volume esperado; ponto de otimização futuro |
+| `benchmarks/`, `scripts/install_mcp.py`, `.github/workflows` | idem |

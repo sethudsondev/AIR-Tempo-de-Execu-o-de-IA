@@ -179,3 +179,69 @@ def coerce_importance(value: str | Importance | None, default: Importance = Impo
         return Importance(str(value).strip().lower())
     except ValueError:
         return default
+
+
+# ---------------------------------------------------------------------------
+# Runtime: capability / goal / task / action / verification
+# (mesma familia de tipos do AIR -- necessarios para Planner, Verification,
+#  Tool Registry e Permissions)
+# ---------------------------------------------------------------------------
+
+class Capability(str, Enum):
+    READ = "read"
+    WRITE = "write"
+    EXECUTE = "execute"
+    NETWORK = "network"
+    DATABASE = "database"
+    FILESYSTEM = "filesystem"
+
+
+class TaskStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+
+
+@dataclass
+class Task:
+    id: str
+    goal_id: str
+    description: str
+    status: TaskStatus = TaskStatus.PENDING
+    depends_on: list[str] = field(default_factory=list)
+    result: "ActionResult | None" = None
+
+
+@dataclass
+class Goal:
+    id: str
+    description: str
+    tasks: list[Task] = field(default_factory=list)
+    created_at: float = field(default_factory=now)
+
+
+class VerificationOutcome(str, Enum):
+    OK = "ok"
+    FAILED = "failed"
+    UNKNOWN = "unknown"   # nao deu para verificar com confianca -- honesto, nao finge sucesso
+
+
+@dataclass
+class ActionResult:
+    id: str
+    tool_name: str
+    args: dict
+    output: object
+    error: str | None = None
+    started_at: float = field(default_factory=now)
+    finished_at: float | None = None
+
+
+@dataclass
+class Verification:
+    id: str
+    action_result_id: str
+    outcome: VerificationOutcome
+    detail: str = ""
+    checked_at: float = field(default_factory=now)

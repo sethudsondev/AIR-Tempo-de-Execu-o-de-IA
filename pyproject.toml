@@ -13,10 +13,11 @@ dependencies = ["mcp>=2.1.0,<3.0.0"]
 [project.optional-dependencies]
 tokens = ["tiktoken>=0.7.0"]
 semantic = ["sentence-transformers>=3.0.0", "numpy>=1.26.0"]
+model = ["litellm>=1.50"]
 dev = ["pytest>=8.0.0"]
 
 [project.scripts]
 securedata-mcp = "sdc.mcp.server:main"
 
-[tool.setuptools]
-packages = ["sdc", "sdc.core", "sdc.db", "sdc.memory", "sdc.world", "sdc.events", "sdc.context", "sdc.security", "sdc.mcp"]
+[tool.setuptools.packages.find]
+include = ["sdc*"]

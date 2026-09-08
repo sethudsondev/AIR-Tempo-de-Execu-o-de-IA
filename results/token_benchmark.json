@@ -1,0 +1,10 @@
+{
+  "note": "medido nesta maquina, heuristica chars//4, orcamento 500 tokens",
+  "query_por_turno": "o que sei sobre o deploy do projeto",
+  "runs": [
+    {"turnos": 6,  "sem_sdc": 1500,  "com_sdc": 1902,  "economia_pct": -27},
+    {"turnos": 12, "sem_sdc": 5497,  "com_sdc": 4805,  "economia_pct": 13},
+    {"turnos": 24, "sem_sdc": 20822, "com_sdc": 10618, "economia_pct": 49}
+  ],
+  "crossover_turnos_aprox": 11
+}

@@ -167,14 +167,52 @@ ser recriado sem perder nada (`SDC_DB_PATH=/data/securedata.db`).
 
 ---
 
+## Módulos (paridade com o AIR)
+
+Além de Memory / World State / Context / Events, o `sdc/` tem os mesmos
+blocos de runtime do AIR:
+
+| Módulo | O que faz |
+|---|---|
+| `sdc/security/permissions.py` | permissão por **capacidade** (grant/require, deny-by-default) |
+| `sdc/events/bus.py` | pub/sub **efêmero** em processo (coordenação, ≠ do log durável) |
+| `sdc/verification/engine.py` | sucesso **semântico** de uma ação (OK/FAILED/**UNKNOWN**) |
+| `sdc/planner/planner.py` | executa grafo de tasks com dependência + verificação por passo |
+| `sdc/tools/registry.py` | tool call → checa capacidade → output grande vira handle |
+| `sdc/models/provider.py` | `EchoProvider` + `LiteLLMProvider` (opcional) |
+| `sdc/filesystem/`, `sdc/process/` | operações de arquivo/comando (confinamento + allowlist) |
+| `sdc/adapters/semantic_search.py` | embeddings opt-in (`sentence-transformers`) |
+| `sdc/sdk/agent.py` | fachada `Agent` que fia tudo (`sdc/agent.py` = `MemoryAgent` enxuto) |
+
+```python
+from sdc.sdk import Agent
+from sdc.core.types import Capability
+
+a = Agent("agent:main", db_path="storage/securedata.db")
+a.grant(Capability.EXECUTE)
+a.register_tool("build", run_build, capability=Capability.EXECUTE)
+a.remember("project.name", "SecureData Central", importance="high")
+print(a.ask("continue o trabalho de ontem", session_id="dia-2"))
+```
+
+## Benchmark
+
+```bash
+python benchmarks/token_benchmark.py 24
+```
+
+Mede a economia de tokens vs. reenviar toda a memória. **Não** economiza
+sempre — ver [`benchmarks/README.md`](benchmarks/README.md): o ganho
+aparece quando a memória acumula e a maior parte é irrelevante ao turno
+(ponto de virada ~11 turnos no cenário testado).
+
 ## Arquitetura
 
-Ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — inclui o que veio do
-AIR (arquitetura em camadas, adapter/server separados, recência por
-supersede, contagem de token honesta, isolamento por `project`,
-`ToolAnnotations`) e o que é específico deste projeto (schema do briefing,
-World State com `valid_from`/`valid_until`, `context_refs` por sessão,
-migrations versionadas, `MemoryAgent` SDK).
+Ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — o que veio do AIR
+(arquitetura em camadas, adapter/server, recência por supersede, token
+honesto, `project`, `ToolAnnotations`, os módulos de runtime acima) e o
+que é específico daqui (schema do briefing, World State temporal,
+`context_refs` por sessão, migrations versionadas).
 
 ## Testes
 
@@ -182,9 +220,11 @@ migrations versionadas, `MemoryAgent` SDK).
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
-72 testes: `test_db`, `test_memory`, `test_world_state`, `test_events`,
-`test_context`, `test_adapter`, `test_mcp`, `test_persistence`,
-`test_security`. Todos só precisam do `requirements.txt`.
+**94 testes**: `test_db` · `test_memory` · `test_world_state` · `test_events`
+· `test_context` · `test_adapter` · `test_mcp` · `test_persistence` ·
+`test_security` · `test_runtime` (permissions/bus/verification/planner/
+tools/models/fs/proc) · `test_sdk`. Todos só precisam do `requirements.txt`.
+CI em `.github/workflows/tests.yml` (Python 3.11 e 3.12).
 
 ## Troubleshooting
 
