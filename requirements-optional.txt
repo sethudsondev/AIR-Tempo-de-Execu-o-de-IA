@@ -1,0 +1,19 @@
+# SecureData Central -- dependencias OPCIONAIS. Cada bloco liga UMA
+# feature; nenhuma e necessaria para o servidor MCP (ver requirements.txt).
+# Instale so o bloco que for usar.
+
+# --- Contagem de token real (sdc/tokens.py). Sem isto, a contagem cai
+# para a heuristica len(texto)//4 -- sempre reportada honestamente no
+# campo "method" da resposta. O primeiro load do tokenizer e lento
+# (I/O de disco); o servidor faz warmup em background e nunca bloqueia.
+tiktoken>=0.7.0
+
+# --- Busca semantica opcional (sdc/context/retrieval.py,
+# SDC_ENABLE_SEMANTIC_SEARCH=true). DESLIGADA por padrao mesmo instalada;
+# so liga com a env var. O primeiro import e pesado -- avaliar antes de
+# ligar em producao.
+sentence-transformers>=3.0.0
+numpy>=1.26.0
+
+# --- Testes
+pytest>=8.0.0

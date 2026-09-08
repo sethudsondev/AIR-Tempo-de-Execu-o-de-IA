@@ -1,0 +1,7 @@
+# SecureData Central -- dependencia MINIMA para rodar o servidor MCP.
+# Tudo alem disso e opcional (ver requirements-optional.txt) e tem
+# fallback gracioso -- o servidor sobe so com o pacote abaixo.
+#
+# Versao pinada: a arquitetura de referencia (AIR) foi testada com
+# mcp==2.1.0; fixamos a mesma linha para evitar divergencia de API.
+mcp>=2.1.0,<3.0.0
