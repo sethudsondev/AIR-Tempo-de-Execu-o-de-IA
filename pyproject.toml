@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "securedata-central"
+version = "0.1.0"
+description = "Camada de memoria, estado e contexto persistente para agentes (MCP + SQLite)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["mcp>=2.1.0,<3.0.0"]
+
+[project.optional-dependencies]
+tokens = ["tiktoken>=0.7.0"]
+semantic = ["sentence-transformers>=3.0.0", "numpy>=1.26.0"]
+dev = ["pytest>=8.0.0"]
+
+[project.scripts]
+securedata-mcp = "sdc.mcp.server:main"
+
+[tool.setuptools]
+packages = ["sdc", "sdc.core", "sdc.db", "sdc.memory", "sdc.world", "sdc.events", "sdc.context", "sdc.security", "sdc.mcp"]

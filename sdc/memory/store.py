@@ -28,6 +28,40 @@ from sdc.db.connection import Database
 
 _COLS = "id, key, content, type, source, importance, project, status, version, supersedes, created_at, updated_at, metadata"
 
+# stopwords PT/EN comuns -- nao ajudam a discriminar relevancia
+_STOPWORDS = {
+    "a", "o", "as", "os", "de", "do", "da", "dos", "das", "e", "ou", "um", "uma",
+    "no", "na", "em", "para", "por", "com", "que", "qual", "quais", "meu", "minha",
+    "the", "of", "to", "in", "on", "is", "it", "and", "or", "a", "an", "my", "what",
+}
+_WORD_RE = __import__("re").compile(r"[a-z0-9À-ſ]+")
+
+
+def _words(text: str) -> set[str]:
+    return set(_WORD_RE.findall(text.lower()))
+
+
+def _significant_terms(query: str) -> list[str]:
+    terms = [t for t in _WORD_RE.findall(query.lower()) if len(t) > 2 and t not in _STOPWORDS]
+    if terms:
+        return terms
+    # query so com termos curtos: usa o que tiver, sem descartar tudo
+    return [t for t in _WORD_RE.findall(query.lower()) if t]
+
+
+def _term_matches(term: str, words: set[str]) -> bool:
+    if term in words:
+        return True
+    if len(term) >= 4:
+        for w in words:
+            if term in w or w in term:
+                return True
+            # prefixo comum >=5 chars: aproxima flexao/idioma
+            # (projeto<->project, configuracao<->config, deploy<->deployment)
+            if len(term) >= 5 and len(w) >= 5 and term[:5] == w[:5]:
+                return True
+    return False
+
 
 def _row_to_memory(row) -> Memory:
     return Memory(
@@ -197,27 +231,32 @@ class MemoryStore:
 
     def search(self, query: str, *, limit: int = 5, project: str | None = None) -> list[tuple[Memory, float]]:
         """Busca por palavra-chave em key + content + type. Score simples e
-        transparente: fracao de termos da query presentes, com bonus para
-        match na key e para importancia/recencia."""
-        terms = [t for t in query.lower().split() if t]
+        transparente: fracao de termos significativos presentes, com bonus
+        para match na key e para importancia/recencia.
+
+        Ignora stopwords/termos muito curtos (<=2 chars) para evitar
+        falso-positivo por substring ('o' casando 'bolo')."""
+        terms = _significant_terms(query)
         candidates = self.all_active(project)
         if not terms:
-            scored = [(m, 0.0) for m in candidates]
-        else:
-            scored = []
-            newest = max((m.updated_at for m in candidates), default=now())
-            oldest = min((m.updated_at for m in candidates), default=newest - 1)
-            span = max(newest - oldest, 1.0)
-            for m in candidates:
-                hay_key = m.key.lower()
-                hay_body = f"{m.content} {m.type}".lower()
-                hits = sum(1 for t in terms if t in hay_key or t in hay_body)
-                if hits == 0:
-                    continue
-                base = hits / len(terms)
-                key_bonus = 0.25 * (sum(1 for t in terms if t in hay_key) / len(terms))
-                recency = 0.15 * ((m.updated_at - oldest) / span)
-                imp = 0.10 * IMPORTANCE_WEIGHT[m.importance]
-                scored.append((m, round(min(base + key_bonus + recency + imp, 1.0), 4)))
+            return [(m, 0.0) for m in candidates][: max(1, limit)]
+
+        scored = []
+        newest = max((m.updated_at for m in candidates), default=now())
+        oldest = min((m.updated_at for m in candidates), default=newest - 1)
+        span = max(newest - oldest, 1.0)
+        for m in candidates:
+            key_words = _words(m.key)
+            body_words = _words(f"{m.content} {m.type}")
+            key_hits = sum(1 for t in terms if _term_matches(t, key_words))
+            body_hits = sum(1 for t in terms if _term_matches(t, body_words))
+            hits = min(key_hits + body_hits, len(terms))
+            if hits == 0:
+                continue
+            base = hits / len(terms)
+            key_bonus = 0.25 * (key_hits / len(terms))
+            recency = 0.15 * ((m.updated_at - oldest) / span)
+            imp = 0.10 * IMPORTANCE_WEIGHT[m.importance]
+            scored.append((m, round(min(base + key_bonus + recency + imp, 1.0), 4)))
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored[: max(1, limit)]

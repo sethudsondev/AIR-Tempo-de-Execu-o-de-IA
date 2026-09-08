@@ -1,0 +1,35 @@
+# SecureData Central -- MCP server via stdio.
+#
+# MCP por stdio nao e um servico de rede: o cliente (Claude Code / Cursor)
+# inicia o processo e fala pelo stdin/stdout. Este compose serve para:
+#   - construir a imagem:            docker compose build
+#   - rodar os testes no container:  docker compose run --rm sdc-tests
+#   - ter o volume /data persistente pronto.
+#
+# Para o cliente MCP consumir o container, aponte o command dele para:
+#   docker compose run --rm -T securedata
+services:
+  securedata:
+    build: .
+    image: securedata-central:latest
+    stdin_open: true
+    tty: false
+    volumes:
+      - sdc_data:/data
+    environment:
+      SDC_DB_PATH: /data/securedata.db
+      SDC_LOG_LEVEL: INFO
+      SDC_MAX_CONTEXT_TOKENS: "2000"
+
+  sdc-tests:
+    build: .
+    image: securedata-central:latest
+    entrypoint: ["python", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"]
+    environment:
+      SDC_DB_PATH: ":memory:"
+    volumes:
+      - ./tests:/app/tests:ro
+    profiles: ["test"]
+
+volumes:
+  sdc_data:

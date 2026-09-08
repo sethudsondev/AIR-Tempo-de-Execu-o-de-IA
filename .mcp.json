@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "securedata": {
+      "command": "python",
+      "args": ["-m", "sdc.mcp.server"],
+      "env": {
+        "SDC_DB_PATH": "storage/securedata.db",
+        "SDC_LOG_LEVEL": "INFO",
+        "SDC_MAX_CONTEXT_TOKENS": "2000"
+      }
+    }
+  }
+}
